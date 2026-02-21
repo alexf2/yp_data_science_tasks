@@ -11,19 +11,6 @@
 -- Задача 1. Исследование доли платящих игроков
 
 -- 1.1. Доля платящих пользователей по всем данным:
-/* v1 */
-/*WITH cte1 AS (
-	SELECT 
-		count(*) total_users, 
-		count(CASE WHEN payer = 1 THEN 1 ELSE NULL end) payer_users
-	FROM fantasy.users
-)
-SELECT 
-	total_users, 
-	payer_users, 
-	round(payer_users::numeric / total_users, 2) fraction_payers
-FROM cte1*/
-
 /* v2 */
 1) Проверяем users на технические дубликаты: если teach_nickname повторяется, то это дефект
 данных. Ещё возможет вариант, когда один человек имеет много учёток под разным именем. Тогда могут 
@@ -46,23 +33,6 @@ FROM fantasy.users;
 
 
 -- 1.2. Доля платящих пользователей в разрезе расы персонажа:
-/* v1 */
-/*WITH cte1 AS (
-	SELECT 
-		race_id,
-		count(*) total_users, 
-		count(CASE WHEN payer = 1 THEN 1 ELSE NULL end) payer_users
-	FROM fantasy.users
-	GROUP BY race_id
-)
-SELECT 
-	race,
-	total_users, 
-	payer_users, 
-	round(payer_users::numeric / total_users, 2) fraction_payers
-FROM cte1 JOIN fantasy.race using(race_id)
-ORDER BY race*/
-
 /* v2 */
 Переписал запрос проще, перешёл на %:
 SELECT 
@@ -89,16 +59,6 @@ FROM fantasy.events
 WHERE amount > 0
 
 -- 2.2: Аномальные нулевые покупки:
-/* v1 */
-/*WITH cte1 AS (
-	SELECT 
-		count(*) total, 
-		count(CASE WHEN amount = 0 THEN 1 ELSE NULL end) zeros
-	FROM fantasy.events
-)
-SELECT total, zeros, zeros::numeric/total fraction
-FROM cte1*/
-
 /* v2 */
 Переписал запрос короче, и с процентами:
 
@@ -110,40 +70,6 @@ FROM fantasy.events;
 
 
 -- 2.3: Популярные эпические предметы:
-/* v1 */
-/*WITH cte1 AS (
-	SELECT item_code, count(*) sold_count
-	FROM fantasy.events 
-	WHERE amount > 0
-	GROUP BY item_code
-),
-cte2 AS (
-	SELECT count(*) total_sold
-	FROM fantasy.events 
-	WHERE amount > 0
-),
-cte3 AS (
-	SELECT item_code, count(DISTINCT id) bayers_count
-	FROM fantasy.events
-	WHERE amount > 0
-	GROUP BY item_code
-),
-cte4 AS (
-	SELECT count(*) total_users
-	FROM fantasy.users	
-)
-SELECT 
-	i.game_items, 
-	sold_count, 
-	round(sold_count::numeric / cte2.total_sold  * 100.0, 2) fraction,
-	round(bayers_count::numeric / cte4.total_users * 100.0, 2) fraction_users
-FROM 
-	cte1 JOIN fantasy.items i USING(item_code) 
-	JOIN cte3 USING(item_code) 
-	CROSS JOIN cte2 
-	CROSS JOIN cte4
-ORDER BY sold_count DESC; */
-
 /* v2 */
 SELECT 
 	drv1.game_items,
@@ -174,49 +100,6 @@ ORDER BY drv1.item_sold_count DESC;
 -- Часть 2. Решение ad hoc-задачbи
 -- Задача: Зависимость активности игроков от расы персонажа:
 -- Напишите ваш запрос здесь
-
-/* v1 */
-/*WITH cte1 AS (
-	SELECT 
-		u.race_id,
-		race,
-		count(*) race_count
-	FROM fantasy.users u, fantasy.race r
-	WHERE u.race_id = r.race_id
-	GROUP BY u.race_id, r.race
-),
-cte2 AS (
-	SELECT 
-		race_id,
-		count(DISTINCT e.id) buyer_count,
-		count(e.transaction_id) total_purchases,
-		avg(amount) avg_amount,
-		sum(amount) total_amount
-	FROM fantasy.users u LEFT JOIN fantasy.events e using(id)
-	WHERE e.amount > 0
-	GROUP BY u.race_id
-),
-cte3 AS (
-	select 
-		race_id,
-		count(CASE WHEN payer = 1 THEN 1 ELSE NULL END) payer_count
-	FROM fantasy.users u
-	GROUP BY u.race_id
-)
-SELECT 		
-	race, 
-	race_count, 
-	payer_count, 
-	buyer_count,
-	round(buyer_count::NUMERIC / race_count * 100.0, 2) relative_bayer,
-	round(payer_count::NUMERIC / race_count * 100.0, 2) payer_fraction,	
-	round(total_purchases::NUMERIC / buyer_count) avg_purcashes,
-	round(avg_amount::NUMERIC, 2) avg_amount_of_purchse,
-	round(total_amount::NUMERIC / buyer_count, 2) total_avg_amount
-FROM cte1 JOIN cte2 using(race_id) JOIN cte3 using(race_id)
-ORDER BY race_count DESC 
-*/
-
 /* v2 */
 WITH cte1 AS (
 	SELECT 
