@@ -1,0 +1,22 @@
+python -m venv venv 
+venv/Scripts/activate 
+python -c "import sys; print(f'Путь: {sys.executable}\nВерсия: {sys.version}')"
+python.exe -m pip install --upgrade pip
+pip install flake8 mypy pylint pep8 pycodestyle
+
+pip install numpy
+pip install pandas 
+pip install matplotlib seaborn phik
+
+
+pip install ipykernel
+python -m ipykernel install --user --name=sprint7_env --display-name="Python Sprint 7"
+
+# jupyter notebook
+# jupyter-notebook
+
+pip freeze > requirements.txt
+#  pip install -r requirements.txt
+
+
+
