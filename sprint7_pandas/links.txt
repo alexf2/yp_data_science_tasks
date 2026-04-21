@@ -1,3 +1,6 @@
 
 Работа:
 	https://practicum.yandex.ru/trainer/data-scientist-plus/lesson/9f090921-0086-47cb-ba9f-02034111bed0/jupyter-homework/
+
+	новая: https://k8s.jupyterhub.praktikum-services.ru/user/user-0-27358077/notebooks/sprint7_project.ipynb#
+
