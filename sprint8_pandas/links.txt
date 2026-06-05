@@ -1,0 +1,3 @@
+https://k8s.jupyterhub.praktikum-services.ru/user/user-0-27358077/notebooks/sprint_8.ipynb
+
+https://k8s.jupyterhub.praktikum-services.ru/user/user-0-27358077/notebooks/sprint_8.ipynb

@@ -1,0 +1,27 @@
+WITH set_config_precode AS (
+    SELECT set_config('synchronize_seqscans', 'off', true)
+)
+SELECT
+    user_id,
+    device_type_canonical,
+    order_id,
+    created_dt_msk AS order_dt,
+    created_ts_msk AS order_ts,
+    currency_code,
+    revenue,
+    tickets_count,
+    created_dt_msk::date - LAG(created_dt_msk::date) OVER (
+            PARTITION BY user_id
+            ORDER BY created_dt_msk
+    ) AS days_since_prev,
+    p.event_id,
+    event_name_code as event_name,
+    ev.event_type_main,
+    p.service_name,
+    r.region_name,
+    c.city_name
+FROM purchases p join events ev USING(event_id) join city c using(city_id) join regions r using(region_id)
+WHERE device_type_canonical IN ('mobile', 'desktop') and event_type_main <> 'фильм'
+ORDER BY user_id
+LIMIT 10;
+
