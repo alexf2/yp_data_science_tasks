@@ -1,1 +1,101 @@
+ipynb: https://practicum.yandex.ru/trainer/data-scientist-plus/lesson/55811bca-1632-4bee-ba57-5973f089ce92/jupyter-homework/
  
+
+Трансформеры: https://habr.com/ru/companies/otus/articles/1039162/
+кросс валидация: https://github.com/ksu-hmi/STaRT/blob/f540ab996c325d7c583e95f203a293d5055038f2/Suhail-25_Machine%20Learning%20Triage%20Project%20Code.py#L121
+трансформеры: https://scikit-learn.org/stable/auto_examples/compose/plot_column_transformer_mixed_types.html
+SelectFromModel: https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.SelectFromModel.html
+
+
+
+
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', StandardScaler(), ['age', 'fare']),
+        ('cat', OneHotEncoder(), ['embarked'])
+    ]) - применение трасформаций по колонкам
+
+log_transformer = FunctionTransformer(np.log1p) - стейтлесс траенсофрм
+
+class OutlierClipper(BaseEstimator, TransformerMixin): - стейтфул трансформ
+    def __init__(self, factor=1.5):
+        self.factor = factor
+        
+    def fit(self, X, y=None):
+        # Learn stateful metrics (bounds) from training data
+        q25, q75 = np.percentile(X, [25, 75], axis=0)
+        iqr = q75 - q25
+        self.lower_bound_ = q25 - (self.factor * iqr)
+        self.upper_bound_ = q75 + (self.factor * iqr)
+        return self
+        
+    def transform(self, X):
+        # Use learned states to transform any dataset identically
+        return np.clip(X, self.lower_bound_, self.upper_bound_)
+
+
+Пример:
+
+numeric_features = ["age", "fare"]
+numeric_transformer = Pipeline(
+    steps=[("imputer", SimpleImputer(strategy="median")), ("scaler", StandardScaler())]
+)
+
+Пример подбора гиперпараметров:
+
+from sklearn.model_selection import GridSearchCV
+from sklearn.ensemble import RandomForestClassifier
+
+# 1. Создать модель
+model = RandomForestClassifier()
+
+# 2. Определить пространство параметров
+param_grid = {
+    'n_estimators': [10, 100, 200],        # 3 значения
+    'max_depth': [3, 5, 10, None],         # 4 значения
+    'max_features': [1, 3, 5, 7],          # 4 значения
+    'min_samples_leaf': [1, 2, 3],         # 3 значения
+    'min_samples_split': [1, 2, 3]         # 3 значения
+}
+
+# Всего комбинаций: 3 ? 4 ? 4 ? 3 ? 3 = 432
+
+# 3. Создать GridSearchCV
+grid_search = GridSearchCV(
+    estimator=model,
+    param_grid=param_grid,
+    cv=3,              # 3-fold кросс-валидация
+    scoring='accuracy', # Метрика для оценки
+    n_jobs=-1          # Использовать все CPU
+)
+
+# 4. Обучить (перебрать все комбинации)
+grid_search.fit(X_train, y_train)
+
+# 5. Получить результат
+print("Лучшие параметры:", grid_search.best_params_)
+print("Лучшая метрика:", grid_search.best_score_)
+print("Обученная модель:", grid_search.best_estimator_)
+categorical_features = ["embarked", "sex", "pclass"]
+categorical_transformer = Pipeline(
+    steps=[
+        ("encoder", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
+        ("selector", SelectPercentile(chi2, percentile=50)),
+    ]
+)
+preprocessor = ColumnTransformer(
+    transformers=[
+        ("num", numeric_transformer, numeric_features),
+        ("cat", categorical_transformer, categorical_features),
+    ]
+)
+
+clf = Pipeline(
+    steps=[("preprocessor", preprocessor), ("classifier", LogisticRegression())]
+).set_output(transform="pandas")
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+
+clf.fit(X_train, y_train)
+print("model score: %.3f" % clf.score(X_test, y_test))
+

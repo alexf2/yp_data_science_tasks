@@ -1,0 +1,254 @@
+__ROLE__
+Ты опытный Senior Data Scientist и ML-инженер, который пишет чисты, понятный легко поддерживаемый и повторно-используемый код, базируясь на лучших практиках.
+
+__CONSTRAINSTS__
+Версия Python: 3.9.5 | packaged by conda-forge | (default, Jun 19 2021, 00:32:32) 
+[GCC 9.3.0]
+Текущий путь: /home/jovyan/work
+pandas: 2.1.4
+numpy: 1.25.2
+	Бэкенд pandas (plotting): matplotlib
+phik: 0.12.5
+matplotlib: 3.8.2
+seaborn: 0.13.0
+sklearn: 1.6.1
+
+__TASK__
+
+Будем обучать логистическую регрессию с целевой переменной churn, несбалансированными классами (1 составляет 6%) для предсказания оттока клиентов кофейного магазина в следующем месяце.
+Для обучения использовать кросс-валидацию на 5 фолдов, делить датасет в пропорции 80% (learn) : 20% (test).
+
+Надо:
+	- подготовить трансформеры для обработки данных по перечисленным шагам, при этом, в простых случаях, когда состояние не нужно, использовать FunctionTransformer, в более сложных Custom Transformer,
+колонки, там, где оптимально, использовать ColumnTransformer и вложенные Pipeline;
+	- из получившихся элементов (трансформеров и пайплайнов) собрать два отдельных пайплайна: полный и без feature engineering (новых полей и логарифмирования, то есть, без пунктов 7 и 13);
+	- добавить в оба пайплайна DummyClassifier и логистчиескую регрессию:
+		LogisticRegression(
+        		class_weight='balanced',  # критично при churn 6%
+		        max_iter=5000,            # saga/elasticnet сходятся медленно
+		        random_state=SEED,
+		    )
+	- далее, сделать на обоих пайплайнах используя StratifiedKFold и 5 фолдов и получить метрики, возможно применяя classification_report.
+		Основная метрика: PR AUC;
+		Дополнительные метрики: F1-score, Recall, Precision.
+	- сравнив метрики выбрать лучшую модель;
+	- далее подобрать её гиперпараметры, выбрать лучшие, отобразить сравнение метрик cross-таблицей. Вот гиперпараметры для перебора моделей и поиска лучших:
+
+param_grid = [
+    {
+        'clf__solver': ['lbfgs'],
+        'clf__penalty': ['l2'],
+        'clf__C': np.logspace(-2, 2, 5),
+    },
+    {
+        'clf__solver': ['saga'],
+        'clf__penalty': ['l1'],
+        'clf__C': np.logspace(-2, 2, 5),
+    },
+    {
+        'clf__solver': ['saga'],
+        'clf__penalty': ['elasticnet'],
+        'clf__C': np.logspace(-2, 2, 5),
+        'clf__l1_ratio': [0.2, 0.5, 0.8],
+    },
+]
+
+	- оценить результат на тестовой выборке;
+	- отобразить метрики и самые сильные признаки таблицей, отсортированные по весам.
+
+
+__CONTEXT__
+
+Уже определены константы:
+SEED = 42 # это для random_state
+TARGET = 'churn' # это целевая переменная
+
+Датасет задан DataFrame df и готов к работе. Надо выполнить разделение датасета, вот его описание:
+RangeIndex: 10450 entries, 0 to 10449
+Data columns (total 27 columns):
+ #   Column                    Non-Null Count  Dtype   
+---  ------                    --------------  -----   
+ 0   user_id                   10450 non-null  category
+ 1   days_since_last_order     9505 non-null   float32 
+ 2   order_frequency_month     9850 non-null   float32 
+ 3   order_frequency_week      10062 non-null  float32 
+ 4   avg_order_value           9867 non-null   float32 
+ 5   median_order_value        9619 non-null   float32 
+ 6   total_spent_last_month    10156 non-null  float32 
+ 7   total_spent_last_week     9506 non-null   float32 
+ 8   discount_usage_rate       10053 non-null  float32 
+ 9   last_coffee_type          10192 non-null  category
+ 10  preferred_roast           10334 non-null  category
+ 11  milk_preference           9782 non-null   category
+ 12  seasonal_menu_tried       9461 non-null   float32 
+ 13  coffee_bean_origin        9768 non-null   category
+ 14  last_drink_size           9946 non-null   category
+ 15  subscription_status       9512 non-null   category
+ 16  app_opens_per_week        9554 non-null   float32 
+ 17  notifications_enabled     9913 non-null   float32 
+ 18  review_rating_last_10     9757 non-null   float32 
+ 19  review_rating_last_1      9593 non-null   float32 
+ 20  app_crashes_last_month    9729 non-null   float32 
+ 21  seasons                   9771 non-null   category
+ 22  days_since_last_promo     9719 non-null   float32 
+ 23  phone_type                10114 non-null  category
+ 24  coffee_preference_change  9840 non-null   float32 
+ 25  geo_id                    10340 non-null  category
+ 26  churn                     10450 non-null  int8    
+dtypes: category(10), float32(16), int8(1)
+
+user_id — идентификатор пользователя.
+days_since_last_order — количество дней, прошедших с последнего заказа.
+order_frequency_month — среднее число заказов в месяц.
+order_frequency_week — среднее число заказов в неделю.
+avg_order_value — средний чек, в рублях.
+median_order_value — медианный чек, в рублях.
+total_spent_last_month — сумма заказов за последний месяц.
+total_spent_last_week — сумма заказов за последнюю неделю.
+discount_usage_rate — доля заказов со скидкой за последний месяц.
+last_coffee_type — сорт кофе, купленный пользователем в последний раз на момент сбора данных.
+preferred_roast — предпочитаемый тип обжарки.
+milk_preference — предпочитаемый тип молока.
+seasonal_menu_tried — отметка о том, пробовал ли пользователь новейшее сезонное меню.
+coffee_bean_origin — страна происхождения зерна.
+last_drink_size — размер последнего заказа, совершённого на момент сбора данных.
+subscription_status — тип подписки пользователя.
+app_opens_per_week — сколько раз за неделю пользователь в среднем открывал приложение доставки кофе.
+notifications_enabled — включены ли у пользователя уведомления.
+review_rating_last_10 — средняя оценка последних на момент сбора данных десяти заказов клиента.
+review_rating_last_1 — оценка последнего на момент сбора данных заказа клиента.
+app_crashes_last_month — сколько раз приложение зависало за последний месяц.
+seasons — текущее время года.
+days_since_last_promo — сколько дней прошло с последнего использования акции или промокода.
+phone_type — тип устройства, с которого пользователь чаще всего совершал покупки.
+coffee_preference_change — менялись ли вкусовые предпочтения пользователя.
+geo_id — идентификатор региона пользователя.
+churn — перестал ли пользователь пользоваться сервисом.
+
+
+
+Процесс подготовки данных для обучения модели логистической регрессии по шагам:
+
+1. Переименовать поле geo_location --> geo_id.
+
+2. Удалить колонку user_id.
+
+3. Преобразуем типы признаков в типы numpy, которые нужны и удобны для обучения линейных моделей:
+	CAT_VARS: df['col'].astype("category") - в последующих шагах будет OneHot и Target encoding и удаление исходной колонки.
+	CONTINIOUS_VARS: np.float64
+	BINARY_VARS: np.int8
+
+4. В CONTINIOUS_VARS отрицательные значения сбросить в NA.
+
+5. Заполняем пропуски NA в CAT_VARS и неявный пропуск 'none' в subscription_status категорией unknown.
+
+6. Заполнить пропущенные парные поля на основе связанного значения, если пропущено только одно поле из пары:
+	пропущен order_frequency_week: order_frequency_week = order_frequency_month / 4.333
+	пропущен order_frequency_month: order_frequency_month = order_frequency_week * 4.33
+	пропущен avg_order_value: avg_order_value = median_order_value
+	пропущен median_order_value: median_order_value = avg_order_value
+	пропущен total_spent_last_month: total_spent_last_month = total_spent_last_week * 4.33
+	пропущен total_spent_last_week: total_spent_last_week = total_spent_last_month / 4.33 
+
+
+7. Заменить следующие поля на новые, старые удалить (order_frequency_month, order_frequency_week, avg_order_value, median_order_value, total_spent_last_month, total_spent_last_week):
+	order_frequency_combo = (order_frequency_month + order_frequency_week * 4.33) / 2 
+
+	order_value_stability = median_order_value / (avg_order_value + 0.01)
+	weekly_spent_share = total_spent_last_week / (total_spent_last_month + 0.01).
+
+ 
+8. Пропуски в app_crashes_last_month заполнить нулём с добавлением add_indicator.
+9. Пропуски в days_since_last_order, days_since_last_promo заполнить 999 с добавлением add_indicator.
+10. Заполнить пропуски во всех полях CONTINIOUS_VARS за вычетом days_since_last_order, days_since_last_promo, app_crashes_last_month через IterativeImputer с RandomForestRegressor / или RandomizedSearchCV - быстрее. 
+Лучше IterativeImputer(max_iter=10, random_state=SEED)  # дефолтный BayesianRidge.
+Учесть, что в шаге 7 часть полей CONTINIOUS_VARS заменены.
+
+11. BINARY_VARS заполнить общей модой по каждой колонке.
+
+12. Выполнить clip по процентилям 0.01, 0.99 CONTINIOUS_VARS кроме review_rating_last_10, review_rating_last_1, app_crashes_last_month, discount_usage_rate.
+
+13. Заменить часть переменных CONTINIOUS_VARS на логарифмы. Исходную переменную удаляем, новую добавляем с суффиксом _log. Переменные такие: days_since_last_order, order_frequency_combo, order_value_stability, weekly_spent_share, app_opens_per_week, days_since_last_promo.
+
+14. Закодировать CAT_VARS за исключением geo_id при помощи OneHotEncoder с drop='first'. Исходные колонки удалить. geo_id закодировать через TargetEncoder.
+
+15. Применить нормализацию и масштабирование.
+	StandardScaler: order_frequency_combo_log, order_value_stability_log, weekly_spent_share_log, review_rating_last_10, review_rating_last_1, app_crashes_last_month, geo_id, app_opens_per_week_log.
+	RobustScaler: days_since_last_order_log, days_since_last_promo_log.
+	MinMaxScaler диапазон 0, 1: discount_usage_rate.
+
+16. Применить SelectFromModel для отбора лучших признаков: 
+	SelectFromModel(
+        	estimator=LogisticRegression(
+            		penalty='l1', solver='liblinear', C=0.5,
+            		class_weight='balanced', max_iter=2000, random_state=SEED,
+        	),
+        	threshold='median',
+    	).
+
+
+Краткое описание шагов обработки:
+	Rename_cols(geo_location) --> Remove_100%_noise_cols(user_id) --> 
+
+	Convert_types --> 
+
+	Reset_neg_values(NA) --> CustImputer(CAT_VARS: none, NA) --> Imputer(Fill_paired_fields) -->  
+
+	New_fields -->
+
+	Imputer(app_crashes_last_month, 0, add_indicator) -->
+	Imputer(days_since_last_order, days_since_last_promo, 999, add_indicator) -->
+	IterativeImputer(CONTINIOUS_VARS за вычетом days_since_last_order, days_since_last_promo, app_crashes_last_month) --> 
+	Imputer(BINARY_VARS модой) --> 
+
+	clip(0.01 и 0.99) --> 
+	
+	lop1p --> 
+
+	Encode_categories (OneHotEncoder, drop='first') --> 
+
+	Scaler -->
+	
+	SelectFromModel.
+
+Исходные переменные:
+
+CONTINIOUS_VARS = (
+    'days_since_last_order', 'order_frequency_month', 'order_frequency_week',
+    'avg_order_value', 'median_order_value', 'total_spent_last_month', 
+    'total_spent_last_week', 'app_crashes_last_month', 'app_opens_per_week', 'review_rating_last_10', 
+    'review_rating_last_1', 'days_since_last_promo', 'discount_usage_rate',
+)
+
+BINARY_VARS = (
+    'seasonal_menu_tried', 'notifications_enabled', 'coffee_preference_change'
+)
+
+CAT_VARS = (
+    "last_coffee_type",
+    "preferred_roast",
+    "milk_preference",
+    "coffee_bean_origin",
+    "last_drink_size",
+    "subscription_status",
+    "seasons",
+    "phone_type",
+    "geo_id",
+)
+
+Переменные после замены переменных (feature engineering 1)
+CONTINIOUS_VARS_FEAT = (
+    'days_since_last_order', 'app_crashes_last_month', 'app_opens_per_week', 
+    'review_rating_last_10', 'review_rating_last_1', 'days_since_last_promo', 
+    'discount_usage_rate', 'order_frequency_combo', 'order_value_stability', 
+    'weekly_spent_share',
+)
+
+Переменные после  логарифмирования (feature engineering 2)
+CONTINIOUS_VARS_LOG = (
+    'app_crashes_last_month', 'review_rating_last_10', 'review_rating_last_1', 
+    'discount_usage_rate', 'days_since_last_order_log', 'order_frequency_combo_log', 
+    'order_value_stability_log', 'weekly_spent_share_log', 'app_opens_per_week_log', 
+    'days_since_last_promo_log',
+)
+
