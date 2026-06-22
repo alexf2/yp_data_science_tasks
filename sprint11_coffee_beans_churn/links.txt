@@ -6,7 +6,8 @@ ipynb: https://practicum.yandex.ru/trainer/data-scientist-plus/lesson/55811bca-1
 трансформеры: https://scikit-learn.org/stable/auto_examples/compose/plot_column_transformer_mixed_types.html
 SelectFromModel: https://scikit-learn.org/stable/modules/generated/sklearn.feature_selection.SelectFromModel.html
 
-
+свой трансформер: https://towardsdatascience.com/custom-transformers-in-python-part-ii-6fe111fc82e4
+	https://towardsdatascience.com/a-basic-introduction-to-pipelines-in-scikit-learn-bd4cee34ad95/
 
 
 preprocessor = ColumnTransformer(
