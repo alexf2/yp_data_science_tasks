@@ -1,0 +1,430 @@
+ __ROLE__
+Ты опытный Senior Data Scientist и ML-инженер, который пишет чистый, понятный, легко поддерживаемый и повторно-используемый код, базируясь на лучших практиках обработки данных и обучения моделей.
+
+__CONSTRAINSTS__
+Путь к Python: /opt/conda/bin/python
+Версия Python: 3.9.5 | packaged by conda-forge | (default, Jun 19 2021, 00:32:32) 
+[GCC 9.3.0]
+Текущий путь: /home/jovyan/work
+pandas: 2.1.4
+numpy: 1.25.2
+	Бэкенд pandas (plotting): matplotlib
+phik: 0.12.5
+matplotlib: 3.9.2
+seaborn: 0.13.2
+sklearn: 1.6.1
+
+
+__CONTEXT__
+Платформа Advantex - это провайдер рекламных баннеров каждый показ которых оплачивается заказчиком - провайдером рекламы. Заказчик платит определённую цену за один клик конкретного баннера, которая определена заранее договором между ним и платформой Advantex. Платформа должна прогнозировать CTR - вроятность клика на банере:  𝐶𝑇𝑅=КликиПоказы×100%
+ . Чтобы участвовать в аукционе за рекламные слоты Web-сайтов и мобильных приложений. На аукцион платформа предоставляет CTR баннера и стоимость, которую она готова оплачивать провайдеру слота за клик. Выручка с клика определяется:
+
+Ожидаемый_доход = Ставка × Предсказанная_вероятность_отклика.
+
+Таким образом, очень важна точность вероятности клика, её максимальное совпадение с реальной вероятностью клика. Это позволит при подборе баннеров выбирать лучшие по произведению ставки на вероятность, чтобы оно было максимальным.
+
+Тип задачи: бинарная классификация на несбалансированных класах, обучение с учителем (по размеченным данным).
+Задача: Построение на основе датасета ds_s16_ad_click_dataset.csv модели, использующей логистическую регрессию или SVC для прогнозирования вероятности клика CTR (Click-Through Rate, коэфф. кликабельности) пользователей по рекламному баннеру в случае его размещения в выигранном на аукционе рекламном слоте Web-сайта или мобильного приложения.
+Цель: максимизация прибыли (Ожидаемый_доход = Ставка × Предсказанная_вероятность_отклика) рекламной платформы Advantex от размещения баннеров через аукционы на рекламные слоты. Иными словами: максимизация произведения ставки на вероятность за счёт максимально точной и реалистичной оценки этой вероятности.
+Целевая переменная: click. 1 — клик был, 0 — клика не было.
+Метрики качества модели и требования: классы click=0 и click=1 несбалансированные (1 - более редка), поэтому:
+
+Основная: PR AUC (площадь под кривой PR) - как индикатор объясняющей способности модели, который игнорирует дисбаланс классов;
+Вторая основная: Log Loss - для оценки точности предсказания вероятности;
+Дополнительные: F1-score (гармоническое среднее), Recall, Precision;
+должна быть калибровка вероятности, так как точность и соотвествие предсказанных вероятностей реальным вероятностям кликов - это приоритет.
+Требования к модели для базового CTR 1.5 - 2%:
+
+PR AUC: > baseline на 0.05 - 0.1;
+Log Loss: < baseline на 0.05 - 0.1;
+Precision: > baseline на 0.1 - 0.3;
+Recall: > baseline на 0.4 -0.7;
+F2-score: > baseline на 0.15 - 0.35;
+ECE: < 0.02 - 0.03;
+MCE: < 0.05 - 0.1.
+
+Датасет (что сейчас осталось после EDA):
+RangeIndex: 50000 entries, 0 to 49999
+Data columns (total 31 columns):
+ #   Column            Non-Null Count  Dtype   
+---  ------            --------------  -----   
+ 0   click             50000 non-null  int8    
+ 1   C1                50000 non-null  category
+ 2   banner_pos        50000 non-null  category
+ 3   site_domain       50000 non-null  category
+ 4   site_category     50000 non-null  category
+ 5   app_domain        50000 non-null  category
+ 6   app_category      50000 non-null  category
+ 7   device_model      50000 non-null  category
+ 8   device_type       50000 non-null  category
+ 9   device_conn_type  50000 non-null  category
+ 10  C14               50000 non-null  category
+ 11  C15               50000 non-null  category
+ 12  C16               50000 non-null  category
+ 13  C17               50000 non-null  category
+ 14  C18               50000 non-null  category
+ 15  C19               50000 non-null  category
+ 16  C20               50000 non-null  category
+ 17  C21               50000 non-null  category
+ 18  ml_feature_1      50000 non-null  float32 
+ 19  ml_feature_2      50000 non-null  category
+ 20  ml_feature_3      50000 non-null  float32 
+ 21  ml_feature_4      50000 non-null  int8    
+ 22  ml_feature_5      50000 non-null  float32 
+ 23  ml_feature_6      50000 non-null  float32 
+ 24  ml_feature_7      50000 non-null  category
+ 25  ml_feature_8      50000 non-null  float32 
+ 26  ml_feature_9      50000 non-null  float32 
+ 27  ml_feature_10     50000 non-null  float32 
+ 28  day               50000 non-null  int8    
+ 29  hour_of_day       50000 non-null  int8    
+ 30  dayofweek         50000 non-null  int8    
+dtypes: category(19), float32(7), int8(5)
+memory usage: 3.1 MB
+
+Его описание (часть полей уже удалили или заменили см. EDA):
+
+Признаки в датасете
+Идентификаторы и временные метки:
+id — уникальный идентификатор записи о показе баннера;
+hour — час, в который был показан баннер, в формате YYMMDDHH.
+Характеристики рекламной площадки ( Site ):
+site_id — идентификатор веб-сайта, на котором был показан баннер;
+site_domain — домен веб-сайта;
+site_category — тематическая категория веб-сайта.
+Характеристики рекламируемого приложения ( App ):
+app_id — идентификатор рекламируемого мобильного приложения;
+app_domain — домен рекламируемого приложения;
+app_category — категория рекламируемого приложения.
+Характеристики устройства и соединения пользователя:
+device_id — идентификатор браузера или устройства;
+device_ip — IP-адрес устройства;
+device_model — модель устройства;
+device_type — тип устройства пользователя: например, смартфон, планшет, ПК;
+device_conn_type — тип сетевого соединения устройства: например, Wi-Fi, 3G, 4G.
+Характеристики рекламного баннера и аукциона:
+banner_pos — позиция баннера на веб-странице;
+C1 — анонимизированный признак, характеризующий контекст показа;
+C14 — C21 — группа анонимизированных признаков, описывающих параметры баннера, пользователя или аукциона.
+Машинно-сгенерированные признаки (ML Features):
+ml_feature_1, ml_feature_3 — ml_feature_6, ml_feature_8 — ml_feature_10 — числовые признаки, полученные в результате предварительной обработки и генерации новых признаков;
+ml_feature_2, ml_feature_7 — категориальные признаки, полученные в результате предварительной обработки и генерации новых признаков.
+Целевая переменная:
+click — бинарный признак, указывающий, был ли совершён клик по баннеру. 1 — клик был, 0 — клика не было.
+
+
+Вот разбивка переменных по типам:
+BINARY_VARS = ('ml_feature_4',)
+# и ещё TARGET, который определён в константах в самом начале
+
+CONTINIOUS_VARS = ('ml_feature_1', 'ml_feature_3', 'ml_feature_5', 'ml_feature_6', 'ml_feature_8',
+                   'ml_feature_9', 'ml_feature_10',)
+# 3 - 24 OneHotEncoder с min_frequency = 10
+CATEGORY_LOW_VARS = ('ml_feature_7', 'C18', 'device_type', 'device_conn_type',
+                     'ml_feature_2', 'banner_pos', 'C1', 'C15', 'C16',
+                     'site_category', 'app_category',)
+
+# 59 - 67 TargetEncoder
+CATEGORY_MID_VARS = ('C21', 'C19', 'app_domain',)
+
+# 149 - 8580 Frequency emcoding
+CATEGORY_HIGH_VARS = ('C20', 'C17', 'app_id', 'site_domain', 'site_id', 'C14', 'device_model', 'device_id',)
+
+ALL_CATEGORY = tuple(dict.fromkeys(CATEGORY_LOW_VARS + CATEGORY_MID_VARS + CATEGORY_HIGH_VARS))
+
+# Cyclic encoding
+CYCLIC_VARS = ('hour_of_day', 'dayofweek', 'day',)
+
+
+Вот кардинальность признаков:
+
+display(pd.DataFrame({
+    'n_unique': df.nunique(),
+    'dtype': df.dtypes.astype(str)
+}).sort_values('n_unique'))
+
+n_unique	dtype
+month	1	int32
+year	1	int32
+click	2	int64
+ml_feature_4	2	int64
+ml_feature_7	3	string
+C18	4	int64
+device_type	4	int64
+device_conn_type	4	int64
+ml_feature_2	5	string
+dayofweek	7	int32
+banner_pos	7	int64
+C1	7	int64
+C15	8	int64
+C16	9	int64
+day	10	int32
+site_category	18	string
+app_category	22	string
+hour_of_day	24	int32
+C21	59	int64
+C19	64	int64
+app_domain	67	string
+C20	149	int64
+C17	387	int64
+app_id	976	string
+site_domain	1013	string
+site_id	1160	string
+C14	1497	int64
+device_model	2521	string
+device_id	8580	string
+device_ip	41455	string
+ml_feature_5	50000	float64
+ml_feature_1	50000	float64
+ml_feature_10	50000	float64
+ml_feature_9	50000	float64
+ml_feature_8	50000	float64
+ml_feature_6	50000	float64
+ml_feature_3	50000	float64
+
+Выводы EDA:
+
+3.0.10.1  Целевая переменная
+Целевая переменная имеет долю кликов 17,21%, дисбаланс классов ≈ 4,8:1 (0 к 1). Это требует использования метрик, устойчивых к дисбалансу: PR‑AUC, LogLoss, F1/F2, Precision/Recall, а также обязательной калибровки вероятностей.
+
+3.0.10.2  Предобработка
+Удалены технические идентификаторы (id, site_id, device_id, device_ip, app_id) и 100% константные/малоинформативные признаки (month, year).
+hour преобразован в компоненты (hour_of_day, dayofweek, day) для последующего циклического кодирования.
+Все строковые признаки нормализованы (нижний регистр, удаление лишних пробелов), типы оптимизированы — память сокращена примерно в 10 раз.
+
+Пропуски отсутствуют.
+
+Категориальные признаки разбиты на три группы по кардинальности:
+
+низкая (≤ 24 уникальных) → One‑Hot Encoding с min_frequency=10;
+средняя (≈ 60) → Target Encoding со сглаживанием (smooth="auto", cv=5);
+высокая (> 100) → Frequency Encoding.
+Большинство категорий имеют невысокую разделяющую способность; полезный сигнал сосредоточен в редких значениях.
+
+3.0.10.3  Числовые признаки
+Распределения близки к нормальным, присутствуют небольшие симметричные выбросы.
+Для линейных признаков (ml_feature_5, ml_feature_8, ml_feature_9, ml_feature_10) применяется StandardScaler — они показывают заметную линейную разделяющую способность (подтверждено параллельным сдвигом медиан на boxplot).
+ml_feature_6 — ключевой нелинейный признак (бимодальное распределение, сигнал на краях диапазона) — будет обработан через SplineTransformer (5 узлов, степень 3).
+ml_feature_1 и ml_feature_3 — малозначимые, но также стандартизируются.
+
+3.0.10.4  Циклические признаки и корреляции
+Циклические признаки (hour_of_day, dayofweek) обладают выраженной связью с CTR (ночной пик, выходные выше среднего), поэтому кодируются синусно‑косинусным преобразованием.
+day — шумный, но оставлен для полноты.
+
+Корреляции: выявлено более 10 пар признаков с Phik > 0.7, что указывает на потенциальную мультиколлинеарность; после кодирования будет проведена проверка через VIF и применена регуляризация (L2 или L1) для стабилизации весов.
+
+3.0.10.5  Перспективные признаки и план пайплайна
+Наиболее перспективные признаки для модели (с учётом линейной и нелинейной составляющей):
+
+числовые: ml_feature_5, ml_feature_8, ml_feature_9, ml_feature_10 (линейные), ml_feature_6 (нелинейный);
+категориальные и дискретные: banner_pos, ml_feature_2 (аномально кликабельные категории), device_conn_type (маркер неэффективного трафика), hour_of_day (циклический ночной пик CTR);
+анонимизированные параметры аукциона/баннера (C1, C14–C21) также обладают потенциальной ценностью.
+
+Для обучения используем готовое разделение датасета:
+
+X_full = df.drop(TARGET, axis=1)
+y_full = df[TARGET].astype('int8')
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X_full, y_full, test_size=0.2, stratify=y_full, random_state=SEED, shuffle=True
+)
+    
+X_validation, X_calib, y_validation, y_calib = train_test_split(
+    X_train, y_train,
+    test_size=0.125,
+    stratify=y_train,
+    random_state=SEED, shuffle=True
+)
+
+X_train, X_validation, y_train, y_validation = train_test_split(
+    X_validation, y_validation,
+    test_size=1/7,
+    stratify=y_validation,
+    random_state=SEED, shuffle=True
+)
+
+Проверка:
+Выборка	Размер (строк)	Доля от общего объема	Количество кликов (1)	CTR (Доля класса 1)
+0	Обучающая (X_train)	30000	60.0%	5162	17.21%
+1	Валидационная (X_validation)	5000	10.0%	860	17.20%
+2	Калибровочная (X_calib)	5000	10.0%	860	17.20%
+3	Тестовая (X_test)	10000	20.0%	1721	17.21%
+4	Исходный датасет (df)	50000	100.0%	8603	17.21%
+
+
+__QUERY__
+Будем обучать LogisticRegression и SVC с линейным ядром (лучше  LinearSVC, он быстрее) с целевой переменной click, несбалансированными классами (1 составляет 17.21%) для предсказания вероятности клика на баннере при его показе в рекламном слоте.
+
+
+Надо подготовить трансформеры для обработки данных по перечисленным шагам, при этом, в простых случаях, когда состояние не нужно, использовать FunctionTransformer, в более сложных Custom Transformer,
+колонки, там, где оптимально, использовать ColumnTransformer и вложенные Pipeline.
+
+1. Преобразовать и нормализовать строковые колонки, которые пришли с типом object. Пример вызова: normalize_text_cols(df, df.select_dtypes(include=['object']).columns)
+Вот исходный датасет, его типы:
+RangeIndex: 50000 entries, 0 to 49999
+Data columns (total 34 columns):
+ #   Column            Non-Null Count  Dtype  
+---  ------            --------------  -----  
+ 0   id                50000 non-null  float64
+ 1   click             50000 non-null  int64  
+ 2   hour              50000 non-null  int64  
+ 3   C1                50000 non-null  int64  
+ 4   banner_pos        50000 non-null  int64  
+ 5   site_id           50000 non-null  object 
+ 6   site_domain       50000 non-null  object 
+ 7   site_category     50000 non-null  object 
+ 8   app_id            50000 non-null  object 
+ 9   app_domain        50000 non-null  object 
+ 10  app_category      50000 non-null  object 
+ 11  device_id         50000 non-null  object 
+ 12  device_ip         50000 non-null  object 
+ 13  device_model      50000 non-null  object 
+ 14  device_type       50000 non-null  int64  
+ 15  device_conn_type  50000 non-null  int64  
+ 16  C14               50000 non-null  int64  
+ 17  C15               50000 non-null  int64  
+ 18  C16               50000 non-null  int64  
+ 19  C17               50000 non-null  int64  
+ 20  C18               50000 non-null  int64  
+ 21  C19               50000 non-null  int64  
+ 22  C20               50000 non-null  int64  
+ 23  C21               50000 non-null  int64  
+ 24  ml_feature_1      50000 non-null  float64
+ 25  ml_feature_2      50000 non-null  object 
+ 26  ml_feature_3      50000 non-null  float64
+ 27  ml_feature_4      50000 non-null  int64  
+ 28  ml_feature_5      50000 non-null  float64
+ 29  ml_feature_6      50000 non-null  float64
+ 30  ml_feature_7      50000 non-null  object 
+ 31  ml_feature_8      50000 non-null  float64
+ 32  ml_feature_9      50000 non-null  float64
+ 33  ml_feature_10     50000 non-null  float64
+dtypes: float64(8), int64(15), object(11)
+memory usage: 42.2 MB
+
+2. Удалить признак id.
+
+3. Признак hour заменить преобразованием:
+df["year"] = df["hour"].dt.year
+df["month"] = df["hour"].dt.month
+df["day"] = df["hour"].dt.day
+df["hour_of_day"] = df["hour"].dt.hour
+df["dayofweek"] = df["hour"].dt.dayofweek
+
+и удалить.
+
+4. Удалить month и year можно сразу в пункте 3, даже не добавлять.
+
+5. Преобразовать типы колонок, если поступили сырые данные и они ещё не преобразованы:
+Data columns (total 35 columns):
+ #   Column            Non-Null Count  Dtype   
+---  ------            --------------  -----   
+ 1   C1                50000 non-null  category
+ 2   banner_pos        50000 non-null  category
+ 3   site_id           50000 non-null  category
+ 4   site_domain       50000 non-null  category
+ 5   site_category     50000 non-null  category
+ 6   app_id            50000 non-null  category
+ 7   app_domain        50000 non-null  category
+ 8   app_category      50000 non-null  category
+ 9   device_id         50000 non-null  category
+ 10  device_ip         50000 non-null  category
+ 11  device_model      50000 non-null  category
+ 12  device_type       50000 non-null  category
+ 13  device_conn_type  50000 non-null  category
+ 14  C14               50000 non-null  category
+ 15  C15               50000 non-null  category
+ 16  C16               50000 non-null  category
+ 17  C17               50000 non-null  category
+ 18  C18               50000 non-null  category
+ 19  C19               50000 non-null  category
+ 20  C20               50000 non-null  category
+ 21  C21               50000 non-null  category
+ 22  ml_feature_1      50000 non-null  float32 
+ 23  ml_feature_2      50000 non-null  category
+ 24  ml_feature_3      50000 non-null  float32 
+ 25  ml_feature_4      50000 non-null  int8    
+ 26  ml_feature_5      50000 non-null  float32 
+ 27  ml_feature_6      50000 non-null  float32 
+ 28  ml_feature_7      50000 non-null  category
+ 29  ml_feature_8      50000 non-null  float32 
+ 30  ml_feature_9      50000 non-null  float32 
+ 31  ml_feature_10     50000 non-null  float32 
+ 32  day               50000 non-null  int8    
+ 33  hour_of_day       50000 non-null  int8    
+ 34  dayofweek         50000 non-null  int8    
+dtypes: category(23), float32(7), int8(5)
+
+6. Удалить малоинформативные признаки 'site_id', 'device_id', 'device_ip', 'app_id'.
+
+7. Добавить кодирование категориальных признаков.
+CATEGORY_LOW_VARS:
+	OneHotEncoder(drop='first', min_frequency=10, handle_unknown='infrequent_if_exist');
+	через drop предотвращаем мультиколлениарность, также, схлопываем редкие значения в одно;
+
+CATEGORY_MID_VARS:
+	TargetEncoder(smooth="auto", cv=5);
+	чтобы избежать утечки используем сглаживание;
+CATEGORY_HIGH_VARS:
+	Frequency Encoding;
+	тут при большом разнообразии значений может быть много редких, поэтому TargetEncoder может дать шумные значения.
+
+8. Обработать непрерывные признаки:
+
+ml_feature_5, ml_feature_8, ml_feature_9, ml_feature_1:
+	линейные фичи, имеют разделяющую способность;
+	StandardScaler();
+	линейные признаки. Стандартизация сохранить распределение и подправит выбросы, чтобы был одинаковый диапазон;
+
+ml_feature_6:
+	нелинейный признак с разделяющей способностью;
+	SplineTransformer(n_knots=5, degree=3);
+	линейная модель сможет вычислить веса по частям, если разделить на сплайны;
+
+ml_feature_1ml_feature_3:
+	малозначимые признаки;
+	StandardScaler();
+	приводим к общему масштабу.
+
+
+9. Бинарные признаки passthrough.
+
+10. Дискретные признаки:
+	Синусно-косинусное кодирование. При этом, начальное и конечное значения окажутся рядом. Так и должно быть, так как между ними разница всего 1. Например, разница между 23 часами и 0 - 1 час. Это позволяет линейной регрессии провести разделяющую плоскость.
+
+11. Создать пайплайн предобработки.
+
+12. После обработки данным пайплайном Train Set сделать отбор признаков.
+
+Сначала фильтрацию вызвав (по типам колонок):
+
+def get_quasi_consts_numeric(df, names, threshold=0.1):
+    vs_quasi = VarianceThreshold(threshold=threshold)     
+    numerical_data = df[list(names)]
+    vs_quasi.fit(numerical_data)
+    return [col for col, keep in zip(names, vs_quasi.get_support()) if not keep]
+
+def get_quasi_consts_categories(df, names):
+    return [col for col in list(names)
+                      if df[col].value_counts(normalize=True).iloc[0] > 0.90]
+
+threshold использовать 0.01.
+Найденные малозначимые признаки вывести через print.
+
+Потом используя метод обёртку. Два варианта: прямой отбор и RFE. 
+Найденные малозначимые признаки вывести через print.
+
+13. Подготовить трансформер для удаления этих малозначимых признаков и добавить в пайплайн.
+
+14. Создать ещё один пайплайн, который включает предобработку, сделанную выше и обучение двух моделей со стандартными гиперпараметрами (без их подбора):
+	- DummyClassifier;
+	- LogisticRegression;
+	- LinearSVC (probability=False);
+Посчитать метрики: 
+	PR AUC, Precision, Recall, F!-score, F2-score.
+
+И сравнить эти модели по метрикам.
+
+
+
+
