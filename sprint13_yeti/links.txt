@@ -1,0 +1,6 @@
+ https://practicum.yandex.ru/trainer/data-scientist-plus/lesson/43cb4ff3-e668-4a18-aa22-aa1bc6312eb1/jupyter-homework/
+
+https://k8s.jupyterhub.praktikum-services.ru/user/user-0-27358077/notebooks/43cb4ff3-e668-4a18-aa22-aa1bc6312eb1.ipynb
+
+Ссылка на урок: [Спринт 16/27: Проект третьего модуля DS > Тема 3/4: Итоговый проект > Урок 2/2: Проект: предсказание возраста посетителей сайтов]( https://practicum.yandex.ru/trainer/data-scientist-plus/lesson/43cb4ff3-e668-4a18-aa22-aa1bc6312eb1/jupyter-homework/#6687eba3-6260-45ff-abd2-2351b2302ae6 )
+Вопрос: 
