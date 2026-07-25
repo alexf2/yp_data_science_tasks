@@ -1,0 +1,83 @@
+REQS = [
+    # ядро (версии протестированы на Python 3.9)
+    "numpy==1.25.2",
+    "scipy==1.13.1",
+    "pandas==2.1.4",
+    "scikit-learn==1.6.1",
+    "matplotlib==3.8.2",
+    "seaborn==0.13.0",
+    "statsmodels==0.14.1",
+    "phik==0.12.5",
+    "jinja2==3.1.4",
+    # транзитивные — пиним, чтобы резолвер не «творил»
+    "numba==0.58.1",
+    "llvmlite==0.41.1",
+    "patsy==0.5.6",
+    "joblib==1.4.2",
+    "threadpoolctl==3.5.0",
+]
+
+import os, sys, site, subprocess, importlib, importlib.metadata as md
+from packaging.requirements import Requirement          # есть в любом conda-образе
+
+DEPS = os.path.join(os.getcwd(), ".deps")               # локально, не трогаем /opt/conda
+
+def _prioritize(path: str) -> None:
+    """Ставим path в НАЧАЛО sys.path (addsitedir кладёт в конец!)."""
+    snapshot = list(sys.path)
+    site.addsitedir(path)                               # чтобы сработали .pth
+    added = [p for p in sys.path if p not in snapshot]
+    for p in reversed([path, *added]):
+        while p in sys.path:
+            sys.path.remove(p)
+        sys.path.insert(0, p)
+    os.environ["PYTHONPATH"] = os.pathsep.join(         # для дочерних процессов
+        [path, os.environ.get("PYTHONPATH", "")]).strip(os.pathsep)
+
+if os.path.isdir(DEPS):
+    _prioritize(DEPS)
+
+def _unmet(reqs):
+    importlib.invalidate_caches()
+    md.MetadataPathFinder.invalidate_caches()
+    bad = []
+    for r in reqs:
+        req = Requirement(r)
+        try:
+            if not req.specifier.contains(md.version(req.name), prereleases=True):
+                bad.append(r)
+        except md.PackageNotFoundError:
+            bad.append(r)
+    return bad
+
+missing = _unmet(REQS)
+if missing:
+    print("Ставлю:", ", ".join(missing))
+    cmd = [sys.executable, "-m", "pip", "install",
+           "--upgrade", "--target", DEPS,
+           "--only-binary=:all:",          # НИКАКОЙ сборки из исходников
+           "--no-warn-script-location", "--disable-pip-version-check",
+           *REQS]                          # ставим весь набор целиком -> согласованный резолв
+    r = subprocess.run(cmd, text=True, capture_output=True)
+    print(r.stdout[-3000:])
+    if r.returncode:
+        print(r.stderr[-4000:], file=sys.stderr)
+        raise RuntimeError("pip install не удался — см. лог выше")
+    _prioritize(DEPS)
+
+    # если что-то тяжёлое уже импортировано — подменить на живом ядре нельзя
+    stale = {"numpy","pandas","scipy","sklearn","matplotlib","seaborn",
+             "numba","statsmodels","phik"} & {m.split(".")[0] for m in sys.modules}
+    if stale:
+        print(f"? Уже загружены {sorted(stale)} — перезапускаю ядро. "
+              f"После перезапуска выполните Run All ещё раз.")
+        get_ipython().kernel.do_shutdown(restart=True)
+
+# -- верификация: падаем громко, а не «тихо на старых версиях» ----------
+assert not _unmet(REQS), f"Не соответствуют требованиям: {_unmet(REQS)}"
+
+import numpy as np, pandas as pd, sklearn, matplotlib, seaborn as sns, phik, statsmodels
+print(f"python      : {sys.version.split()[0]} @ {sys.executable}")
+for m in (np, pd, sklearn, matplotlib, sns, phik, statsmodels):
+    print(f"{m.__name__:<12}: {m.__version__:<10} <- {os.path.dirname(m.__file__)}")
+
