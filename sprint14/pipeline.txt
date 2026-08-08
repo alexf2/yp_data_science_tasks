@@ -1,0 +1,491 @@
+__ROLE__
+Senior Data Scientist, ML engineer, который пишет хорошо читаемый и легко поддерживаемый код.
+
+__CONTEXT__
+Есть датасет. Вот описание исходного датасета до EDA.
+
+Признак	Описание	Единица измерения
+Temperature	Температура воздуха в градусах Цельсия (°C).	Градус Цельсия, °C.
+Humidity	Относительная влажность воздуха.	Процент водяного пара в воздухе.
+Windspeed	Скорость ветра.	Метр в секунду.
+Visibility	Видимость (в десятках метров).	Десять метров.
+Dew Point Temperature	Точка росы (°C).	Градус Цельсия, °C.
+Solar Radiation	Солнечная радиация (MJ/m²).	Мегаджоуль на квадратный метр, МДж/м², или MJ/m².
+Rainfall	Количество осадков (мм).	Миллиметр, мм.
+Snowfall	Количество снега (см).	Сантиметр, см.
+Seasons	Времена года: Winter, Spring, Summer, Autumn.	Winter — зима, Spring — весна, Summer — лето, Autumn — осень.
+Holiday	Был ли в этот день выходной или праздничный день.	Holiday — выходной или праздник, No Holiday — будний день.
+Functioning Day	Были ли велосипеды арендованы в рабочее время.	Yes — да, функциональные часы, No — нет, техническое обслуживание станций проката.
+Несколько колонок Time_Period	Каждая запись в датасете относится к одному из пяти временных периодов:
+
+• Night — c 00:00 по 05:59;
+• Morning — с 06:00 по 09:59.
+• Daytime — с 10:00 по 15:59.
+• Evening — с 16:00 по 19:59;
+• Late Evening — с 20:00 по 23:59.	True и False.
+
+Данные о периоде Daytime — это базовое состояние. Запись, у которой в четырёх колонках c временным промежуткам указано значение False, автоматически относится к периоду Daytime.
+Rented Bike Count — это целевая переменная. Она содержит количество велосипедов, арендованных за конкретный час. Значение отражает почасовой спрос на аренду, и именно от точности прогноза этой величины зависит стабильность работы всей логистической системы компании.
+
+Вот текущее состояние датасета в конце EDA:
+
+RangeIndex: 7008 entries, 0 to 7007
+Data columns (total 16 columns):
+ #   Column                 Non-Null Count  Dtype   
+---  ------                 --------------  -----   
+ 0   temperature            7008 non-null   float32 
+ 1   humidity               6742 non-null   float32 
+ 2   wind_speed_m_s         6798 non-null   float32 
+ 3   visibility_10m         6749 non-null   float32 
+ 4   dew_point_temperature  7008 non-null   float32 
+ 5   solar_radiation_mj_m2  6798 non-null   float32 
+ 6   rainfall_mm            6746 non-null   float32 
+ 7   snowfall_cm            6745 non-null   float32 
+ 8   seasons                7008 non-null   category
+ 9   holiday                7008 non-null   int8    
+ 10  functioning_day        7008 non-null   int8    
+ 11  rented_bike_count      7008 non-null   int16   
+ 12  time_period            7008 non-null   category
+ 13  _miss_rain             7008 non-null   int64   
+ 14  is_rain                7008 non-null   int8    
+ 15  is_snow                7008 non-null   int8    
+dtypes: category(2), float32(8), int16(1), int64(1), int8(4)
+
+Вот пропуски:
+
+	missing_count	missing_percent
+temperature	0	0.00
+humidity	266	3.80
+wind_speed_m_s	210	3.00
+visibility_10m	259	3.70
+dew_point_temperature	0	0.00
+solar_radiation_mj_m2	210	3.00
+rainfall_mm	262	3.74
+snowfall_cm	263	3.75
+seasons	0	0.00
+holiday	0	0.00
+functioning_day	0	0.00
+rented_bike_count	0	0.00
+time_period	0	0.00
+_miss_rain	0	0.00
+is_rain	0	0.00
+is_snow	0	0.00
+
+
+Вот задача ML
+
+Компания BikeSouth занимается велопрокатом в южных курортных регионах. Для них характерно сильное колебание спроса на аренду в зависимости от сезона и погоды, так как летом приезжает основная масса отдыхающих, а зимой проживают преимущественно местные жители. Кроме того, спрос зависит от времени суток, а погода в пребрежных районах может сильно меняться. Поведение пользователей действительно сильно зависит от сочетания разных факторов: температуры, солнечной активности, влажности, осадков. У заказчика уже есть линейная модель регрессии, но оказалось, что у ачсти переменных, описывающих погоду, есть нелинейные зависимости с которыми линейная модель плохо справляется и даёт неточные прогнозы. А от сочетания параметров погоды (влажность, температура, точка росы, ветер, видимость...) сильно зависит активность пользователей.
+
+Для компании важно:
+
+повысить точность прогнозов;
+оптимизировать логистику распределения велосипедов;
+улучшить клиентский опыт, избегая простоев и дефицита.
+Поэтому, требуется оценить метрики старой модели и построить нелинейную модель регрессии, подбирая лучшую модель на основе kNN и Decision Tree. Погодные и прочие условия в данных собираются в течении года и имеют повторяющиеся диапазоны значений, поэтому, возможность экстраполяции здесь не требуется, и kNN или DT вполне могут дать лучшие результаты.
+
+Тип задачи — регрессия, обучение с учителем (на размеченных данных).
+Задача — построение на основе наблюдений, содержащих признаки погодных условий и времени года и суток нелинейной регрессии, прогнозирующей почасовой спрос на аренду велосипедов.
+Цель — оптимизация работы сервиса аренды за счёт уменьшения простоев или дефицита велосепидов, повышение удовлетворённости пользователей.
+Целевая переменная — Rented Bike Count: число арендованных велосипедов в час (или, почасовой спрос на аренду).
+Метрики качества модели
+Основная — RMSE: корень из средне-квадратичной ошибки. Сильно штрафует крупные ошибки и имеет ту же размерность, что помогает легко интерпретировать.
+ 
+Вспомогательные — R2 (объясняющая способность модели) и MAE (средняя абсолютная ошибка).
+Требования к модели
+ориентировочное значение нормированной RMSE не ниже: 0.2 и ниже;
+ориентировочное значение R2 от 0.7 и выше;
+нужно сравнивать метрики с базовой линейной моделью, чтобы снизить RMSE.
+
+__CONSTRAINTS__
+
+При написании трансформеров, пайплайна, прочего кода учитывай версии библиотек, особенно sklearn, pandas, numpy.
+В трансформеры нужно добавить все преобразования из шагов EDA, которые перечислены ниже. Это важно, так как на вход пайплайна в проде будет приходить сырой датасет. Поэтому, и нормализацию и исправление имён колонок в Snake Case
+надо добавить,  по перечисленный в EDA пунктам.
+
+Используй для ускорения обучения моделей кэш memory. Он уже определён в тетради: memory = Memory(location='./cache_pipeline', verbose=0)
+
+Версии библиотек:
+python      : 3.9.5
+numpy       : 1.21.6   
+scipy       : 1.7.3    
+pandas      : 1.3.5    
+sklearn     : 0.24.1   
+matplotlib  : 3.5.3    
+seaborn     : 0.12.2   
+statsmodels : 0.13.5   
+phik        : 0.12.2   
+numba       : 0.56.4   
+llvmlite    : 0.39.1
+
+
+Загруженные датасеты:
+	df_train - Тренировочная выборка;
+	df_test - тестовая выборка.
+
+Текущие колонки после EDA:
+BIN_VARS ('is_snow', 'holiday', 'is_rain', 'functioning_day')
+
+CAT_VARS ('seasons', 'time_period')
+
+CONTINIOUS_INT_VARS ('visibility_10m', 'rainfall_mm', 'snowfall_cm')
+
+CONTINIOUS_REAL_VARS ('temperature', 'humidity', 'wind_speed_m_s', 'dew_point_temperature', 'solar_radiation_mj_m2')
+
+Константы:
+	SEED = 42
+	TARGET = 'rented_bike_count'
+
+
+Базовая модель дана. Её трогать не надо. Это линейная уже обученная модель. Её метрики в Jupyter Notebook уже лежат в base_metrics и их можно взять для сравнения:
+
+def score(y_true, y_pred, name):
+    return {
+        "модель": name,
+        "RMSE": mean_squared_error(y_true, y_pred, squared=False),
+        "MAE": mean_absolute_error(y_true, y_pred),
+        "R2": r2_score(y_true, y_pred),
+        "WAPE": mean_absolute_error(y_true, y_pred) / y.mean(),
+    }
+
+
+Разделение выборок на X и y перед обучением моделей такое:
+
+base_metrics = pd.DataFrame([
+    score(y, pred, "linear (как есть)"),
+    score(y, pred_clipped, "linear + clip(0)"),
+    score(y, pred_dummy, "dummy (mean)"),
+]).set_index("модель")
+
+
+def split_xy(df, target=TARGET):
+    X = df.drop(columns=[target]).copy()
+    y = df[target].astype('float64').copy()
+    return X, y
+
+X_train, y_train = split_xy(df_train)
+# это разделено уже ранее, при оценке метрик базовой модели
+# X_test,  y_test  = split_xy(df_test)
+
+print("Train:", X_train.shape, " Test:", X_test.shape)
+print("Колонки:", list(X_train.columns))
+
+
+
+
+Трансформер для удаления признаков:
+
+class ColumnDropper(BaseEstimator, TransformerMixin):
+    """
+    Удаляет колонки по именам.
+    Работает с pandas DataFrame, сохраняет имена признаков.    
+    """
+    def __init__(self, cols_to_drop):
+        self.cols_to_drop = cols_to_drop   # только присвоение (sklearn clone contract)
+
+    def fit(self, X, y=None):
+        X = pd.DataFrame(X)
+        self.feature_names_in_ = list(X.columns)                    # что пришло
+        self.feature_names_out_ = [c for c in X.columns
+                                   if c not in self.cols_to_drop]   # что останется
+        return self
+
+    def transform(self, X):
+        X = pd.DataFrame(X)
+        return X.drop(columns=[c for c in self.cols_to_drop if c in X.columns])
+
+    def get_feature_names_out(self, input_features=None):
+        # приоритет: переданные имена -> сохранённые на fit
+        if input_features is not None:
+            return np.asarray([c for c in input_features
+                               if c not in self.cols_to_drop], dtype=object)
+        return np.asarray(self.feature_names_out_, dtype=object)
+
+
+Нормализация текстовых исходных признаков в сыром датасете:
+def normalize_text_cols(df, col_names, to_lower=True):
+    """
+        Конвертирует колонки col_names в string, обрезает пробелы с концов и нормализует пробелы внутри строк.
+        Если задано to_lower, то приводит к нижнему регистру.
+    """
+    for name in col_names:        
+        df[name] = df[name].astype('string').str.strip().str.replace(r'\s+', ' ', regex=True)
+        if to_lower:
+            df[name] = df[name].str.lower()
+
+
+Приведение имён колонок к Snake Case:
+def to_snake_case_columns(dataframe: pd.DataFrame) -> None:
+    """Приводит названия колонок к snake_case прямо в исходном датафрейме."""
+    dataframe.columns = (
+        dataframe.columns
+        .str.replace(r'[\s/()\-%,.]+', '_', regex=True)  # Замена спецсимволов и пробелов на _
+        .str.replace(r'^_+|_+$', '', regex=True)         # Удаление подчеркиваний на концах
+        .str.lower()                                     # Перевод в нижний регистр
+    )
+
+def str_to_binary(dataframe: pd.DataFrame, column: str, mapping: dict) -> None:
+    """
+    Преобразует бинарный текстовый признак в число на месте (inplace).
+    mapping: {'holiday': 1, 'no holiday': 0}
+    Значения вне mapping и пропуски -> NaN.
+    dtype: int8, если пропусков нет, иначе float32 (совместимо с sklearn).
+    """
+    s = dataframe[column].map(mapping)
+    dataframe[column] = s.astype('int8') if s.notna().all() else s.astype('float32')
+
+
+def downcast_columns_for_ml(data_frame, *, ints=None, floats=None, cats=None):
+    """Приводит колонки к оптимальным NumPy-типам для ML с downcast.
+
+    - Integer колонки: int64 -> int8/16/32/64 в зависимости от диапазона.
+    - Float колонки: float64 -> float32.
+    - Object/String колонки: object -> category (для экономии памяти и ML).
+
+    ВАЖНО: В отличие от Extended-типов pandas, стандартные целочисленные типы
+    NumPy (int8-int64) НЕ поддерживают NaN. Если в целочисленной колонке есть
+    пропуски, pandas принудительно оставит её в типе float32/64.
+    """
+
+    ints_actual = (
+        set(ints) if ints is not None
+        else set(data_frame.select_dtypes(include="integer").columns)
+    )
+        
+    floats_actual = (
+        set(floats) if floats is not None
+        else set(data_frame.select_dtypes(include="float").columns)
+    ) - ints_actual    
+    
+    cats_actual = (
+        set(cats) if cats is not None
+        else set(data_frame.select_dtypes(include=["object", "string"]).columns)
+    )
+
+    for col in ints_actual:
+        # Приводим к числовому типу NumPy
+        data_frame[col] = pd.to_numeric(data_frame[col], errors="coerce")
+
+        # Если в колонке есть NaN, NumPy int не сможет её сохранить.
+        # В таком случае переводим её во float32, чтобы не ломать ML-алгоритмы.
+        if data_frame[col].isnull().any():
+            data_frame[col] = data_frame[col].astype(np.float32)
+            continue
+
+        col_min, col_max = data_frame[col].min(), data_frame[col].max()
+
+        if col_min >= -128 and col_max <= 127:
+            data_frame[col] = data_frame[col].astype(np.int8)
+        elif col_min >= -32768 and col_max <= 32767:
+            data_frame[col] = data_frame[col].astype(np.int16)
+        elif col_min >= -2147483648 and col_max <= 2147483647:
+            data_frame[col] = data_frame[col].astype(np.int32)
+        else:
+            data_frame[col] = data_frame[col].astype(np.int64)
+
+    for col in floats_actual:
+        data_frame[col] = pd.to_numeric(data_frame[col], errors="coerce")
+        data_frame[col] = data_frame[col].astype(np.float32)
+
+    # Для ML текстовые признаки переводим в категориальный тип, а не в string
+    for col in cats_actual:
+        data_frame[col] = data_frame[col].astype("category")
+
+    return data_frame
+
+
+
+
+
+Вот шаги и выводы EDA, в которых определены трансформации для пайплайнов kNN и Decision Tree:
+
+1.  Нормализовали текстовые поля и преобразовали в string.
+normalize_text_cols(df_train, df_train.select_dtypes(include=['object']).columns)
+
+
+2. Привели имена колонок к Snake Case.
+to_snake_case_columns(df_train)
+
+
+3.  Привели holiday к binary.
+str_to_binary(df_train, 'holiday', {'holiday': 1, 'no holiday': 0})
+
+4. Привели functioning_day к binary.
+str_to_binary(df_train, 'functioning_day', {'yes': 1, 'no': 0})
+
+5. Оптимизировали типы признаков датасета.
+downcast_columns_for_ml(
+    df_train, 
+    ints=CONTINIOUS_INT_VARS + (TARGET,) + BIN_VARS, 
+    cats=CAT_VARS, 
+    floats=CONTINIOUS_REAL_VARS
+);
+
+SEASON_ORDER = ["winter", "spring", "summer", "autumn"]
+
+df_train["seasons"] = df_train["seasons"].cat.reorder_categories(
+    SEASON_ORDER,
+    ordered=True
+)
+
+6. Целевая переменная rented_bike_count - проанализировали: есть средние выбросы
+Для целевой переменной: Добавить в пайплайн логарифмирование log1p TARGET. А в обёртке вызвать обратное преобразование np.expm1, чтобы получить число велосипедов.
+
+7. Категориальные переменные - проанализировали
+ Собрали time_period обратно из OHE кодов. И удалили исходные булевы признаки.
+
+df_train['time_period'] = 'daytime'
+tp_ohe_parts = []
+for tp in ['morning', 'evening', 'late_evening', 'night']:
+    df_train.loc[df_train[f'time_period_{tp}'] == 1, 'time_period'] = tp
+    tp_ohe_parts.append(f'time_period_{tp}')
+
+time_period_order = ['night', 'morning', 'daytime', 'evening', 'late_evening']
+df_train['time_period'] = pd.Categorical(df_train['time_period'], categories=time_period_order, ordered=True)
+
+df_train.drop(columns=tp_ohe_parts, inplace=True)
+
+Признак seasons: DT - это Decision Tree
+	Для kNN: будем кодировать через One Hot Encoder (drop = None), так как значений 4. Для kNN коллинеарность не мешает, поэтому drop=None.
+
+	Для DT: OrdinalEncoding: winter, spring, summer, autumn. Календарный.
+
+Признак time_period:
+ 	Для kNN: сначала собираем time_period из time_period_xxx, затем time_period кодируем через One Hot Encoder (drop = None), а исходные признаки time_period_xxx удаляем. Значений всего 5, и это подходит для kNN. В исходных удалена первая категория, а это нарушает симметрию расстояний между категориями.
+
+	Для DT тоже самое, только OrdinalEncoding 'night', 'morning', 'daytime', 'evening', 'late_evening' вместо OHE.
+
+8. Бинарные переменные - проанализировали
+Передаём как есть, без преобразований.
+
+9. Непрерывные целые признаки
+ Пропусков немного, поэтому, заполняем пропуски медианой, для kNN ещё lop1p на осадки и MinMaxScaler на все поля.
+
+Признак	Импутация	Флаг	DT	kNN
+rainfall_mm	median		passthrough	log1p → MinMax
+snowfall_cm	median		passthrough	log1p → MinMax
+visibility_10m	median		passthrough	MinMax (без log)
+
+Добавить в pipeline заполнение пропусков, преобразования и признаки is_rain, is_show (только для kNN: DT сам найдёт порог).
+
+df_train['is_rain'] = (df_train['rainfall_mm'] > 0).astype('int8')
+df_train['is_snow'] = (df_train['snowfall_cm'] > 0).astype('int8')
+
+10. Непрерывные признаки REAL
+	humidity - сначла сбрасываем все 0 в NA, потом заполняем медианой по группе seasons, time_period.
+		df_train.loc[df_train['humidity'] == 0, 'humidity'] = np.nan
+		df_train.groupby(['seasons', 'time_period'])['humidity'].transform(lambda s: s.fillna(s.median()))
+	
+Признак	Заполнение	DT	kNN
+temperature	—	passthrough	MinMax
+humidity	median --> NA и 0	passthrough	MinMax
+dew_point_temperature	—	passthrough	MinMax
+wind_speed_m_s	median	passthrough	log1p → MinMax
+solar_radiation_mj_m2	median	passthrough	log1p → MinMax
+
+11. Корреляция признаков и feature engineering на её основе:
+ dew_point_temperature - более слабый признак. Заменим на разность: df_train['temperature_diff'] = df_train['temperature'] - df_train['dew_point_temperature'] для обоих моделей.
+И удалить dew_point_temperature.
+	
+
+
+
+__EXAMPLES__
+
+Код сохранения модели:
+
+MODEL_FILE_NAME = 'yeti_svc_rbf_model.dill'
+PREPROC_FILE = 'preprocessing_deps.dill'
+
+# pre_transformer merge_yeti_df и его зависимости
+preprocessing_deps = {
+    'merge_yeti_df': merge_yeti_df,
+    'normalize_text_cols': normalize_text_cols,
+    'downcast_columns_for_ml': downcast_columns_for_ml,
+    'dedup_full_rows': dedup_full_rows,
+    'drop_columns_inplace_safe': drop_columns_inplace_safe,
+    'TARGET': TARGET,
+}
+
+model_descriptor = {
+    # весь пайплайн: препроцессинг + отбор признаков + SVC
+    'pipeline': best_model,
+
+    'metrics': {
+        'cv': {
+            'f1_macro': float(cv_score), # = candidates[best_name].best_score_
+        },
+        'test': {
+            'f1_macro':        float(test_score), 
+            'precision_macro': float(precision_score(y_test, y_pred,
+                                                     average='macro', zero_division=0)),
+            'recall_macro':    float(recall_score(y_test, y_pred, average='macro')),
+        },
+        'cv_test_gap': float(cv_score - test_score),
+    },
+
+    'meta': {
+        'model_name':        best_name,
+        'best_params':       candidates[best_name].best_params_,
+        'target':            TARGET,
+        'classes':           best_model.classes_.tolist(),
+        'raw_input_columns': list(X_train.columns),
+        'n_raw_features':    X_train.shape[1],
+        'features_dropped_by_selection': list(FEATURES_TO_DROP),
+        'requires_pretransform': 'merge_yeti_df() before predict',
+        'trained_at':        datetime.now().isoformat(timespec='seconds'),
+        'sklearn_version':   sklearn.__version__,
+        'seed':              SEED,
+        'preprocessing_deps_file': PREPROC_FILE,
+        'merge_yeti_df_code': inspect.getsource(merge_yeti_df) # это для справки и для доступа к коду
+    },
+}
+
+with open(PREPROC_FILE, 'wb') as f:
+    dill.dump(preprocessing_deps, f)
+
+with open(MODEL_FILE_NAME, 'wb') as f:
+    dill.dump(model_descriptor, f, protocol=4)
+    
+print('✅ Модель сохранена:', [MODEL_FILE_NAME] + [PREPROC_FILE])
+
+
+Пример финального билдера с удалением фич:
+def build_preprocessing_pipeline():
+    return Pipeline([
+        ('encode', build_feature_encoder()),
+    ], memory = memory)
+
+def build_preprocessing_with_selection(features_to_drop):
+    """ полный препроцессинг + удаление малозначимых """
+    pipe = build_preprocessing_pipeline()
+    pipe.steps.append(('drop_selected', ColumnDropper(list(features_to_drop))))
+    return pipe
+
+Пример пайплайна уже с моделью для обучения:
+def make_pipeline(model):    
+    return Pipeline([
+        ("prep", build_preprocessing_with_selection(FEATURES_TO_DROP)),
+        ("model",  model),
+    ], memory = memory)
+
+
+__QUERY__
+1. Подготовить отдельные пайплайны для kNN и для Decision Tree по выводам EDA. 
+2. Отобрать один раз важные признаки. Выбрать оптимальный метод отбора для kNN и Decision Tree, например SelectFromModel.
+Признаки вывести, сохранить в переменных и в финальный билдер пайплайна добавить параметр для передачи удаляемых признаков. В финальном билдере можно использовать трансформер ColumnDropper, чтобы добавить удаление фич в конец,
+но до модели. Есть в EXAMPLES.
+
+3. Обучить две модели с гиперпараметрами по умолчанию, вывести сравнительную таблицу с метриками, которые поставлены в задаче. Добавить WAPE. Табличку сравнения метрик моделей сделать на основе base_metrics, где уже лежит базовая модель.
+4. Подобрать для двух моделей: kNN и Decision Tree гиперпараметры через Optuna. 
+5. Сравнить в единой таблице метрики до и после подбора. Вывести лучшие гиперпараметры в колонке таблички. Сравнивать только kNN и Decision Tree с вариантом без подбора параметров.
+6. Обучить обе модели с лучшими гипер-параметрами на кросс-валидации.
+7. Отобразить стабильность моделей на bar plot Или box plot на кросс-валидации.
+8. Посчитать метрики этих моделей на Train Set и Test Set. Вывести итоговую табличку со сравнением метрик. Включить метрики из base_metrics и метрики новых двух моделей с оптимальными гипер-параметрами на Train Set и на Test Set.
+9. Выбрать лучшую модель.
+10. Сохранить модель по аналогии как в __EXAMPLES__, но выбрать оптимальное решение под данный случай.
+
+
+
+
+
+
