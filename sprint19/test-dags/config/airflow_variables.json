@@ -1,0 +1,9 @@
+{
+  "churn_s3_bucket": "s3-ds-20261015-a868c33dd7",
+  "churn_model_key": "telcom_catboost_pipeline.pkl",
+  "churn_leads_limit": "1000",
+  "churn_top_n": "100",
+  "churn_res_table": "public.telcom_churn_res",
+  "churn_stats_table": "public.churn_scoring_stats"
+}
+

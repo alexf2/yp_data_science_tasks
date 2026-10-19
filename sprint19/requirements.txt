@@ -1,0 +1,24 @@
+# NorthCart batch features: зависимости DAG batch_features
+# Целевая платформа: apache/airflow:2.10.5, Python 3.12
+#
+# Версии здесь не закреплены: их фиксирует официальный
+# constraints-файл Airflow 2.10.5, поэтому они совпадают с версиями в образе.
+# Устанавливать только вместе с constraints:
+#
+#   pip install "apache-airflow==2.10.5" -r requirements.txt \
+#     --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.12.txt"
+#
+# В официальном образе apache/airflow:2.10.5 все пакеты уже установлены.
+
+# Airflow providers
+apache-airflow-providers-postgres     # PostgresHook: загрузка исходных данных
+apache-airflow-providers-amazon       # S3Hook: запись и проверка parquet в S3
+
+# Обработка данных
+pandas                                # расчёт признаков (2.1.x по constraints)
+numpy
+pyarrow                               # запись и чтение parquet
+SQLAlchemy                            # 1.4.x, как в Airflow 2.10
+psycopg2-binary                       # драйвер PostgreSQL
+pendulum                              # даты и часовые пояса в DAG
+boto3                                 # клиент S3 (зависимость провайдера amazon)

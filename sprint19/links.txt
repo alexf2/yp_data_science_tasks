@@ -1,0 +1,21 @@
+S3: https://storage.yandex.ru/
+	s3-ds-20261015-a868c33dd7.storage.yandex.ru
+
+GitLab: https://ds-practicum.gitlab.yandexcloud.net/templates/airflowtemplate
+	https://ds-practicum.gitlab.yandexcloud.net/s15340157/airflow-template-my
+
+	git@ds-practicum.gitlab.yandexcloud.net:s15340157/airflow-template-my.git
+
+
+S3 TimeWeb:
+	https://s3.twcstorage.ru
+	bucket: f79ef650-9057-4a6c-a232-297f67d573d3  и того: https://f79ef650-9057-4a6c-a232-297f67d573d3.s3.twcstorage.ru
+	region: ru-1
+
+https://timeweb.cloud/my/storage/585087/dashboard
+	
+Проект спринта 19:
+
+
+GitLab project: https://ds-practicum.gitlab.yandexcloud.net/s15340157/north-cart-airflow-data
+

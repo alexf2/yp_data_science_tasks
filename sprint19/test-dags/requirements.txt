@@ -1,0 +1,10 @@
+# Airflow 2.10.5, провайдеры postgres/amazon, boto3, pandas, numpy
+# уже есть в образе apache/airflow:2.10.5, их версии задают constraints
+
+# Machine Learning
+catboost==1.2.7
+scikit-learn==1.5.2
+
+
+# Utilities
+python-dotenv>=1.0.0
